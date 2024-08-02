@@ -85,7 +85,7 @@ ggplot(questions, aes(x=Pregunta)) +
     x='Pregunta', y='% de la Respuesta'
   ) +
   theme_classic() +
-  theme(legend.position='top')
+  theme(legend.position='right')
 
 # respuestas de docentes
 questions <- respdocentes
@@ -113,7 +113,7 @@ ggplot(questions, aes(x=Pregunta)) +
     x='Pregunta', y='% de la Respuesta'
   ) +
   theme_classic() +
-  theme(legend.position='top')
+  theme(legend.position='right')
 
 # tipos de IA usadas por los alumnos
 
@@ -148,33 +148,34 @@ grupos <- function(datos, tipo){
     
     # k-medoids clustering or partitioning around medoids (PAM)
     # visualiza la matriz, Values of 1 are completely dissimilar and values of 0 means identical responses
+    # steelblue
     
     gradient.color <- list(low = "steelblue",  high = "white")
     fviz_dist(domains.dist, 
        gradient = gradient.color,order=F, show_labels = T,   lab_size = 4)
     
     # determina el numero de clusters usando el metodo de siluetas
-    number_clusters <- NbClust(diss=domains.dist,distance=NULL,
-                              min.nc = 2, max.nc = 10,
-                              method = "median",
-                              index="silhouette")
+      number_clusters <- NbClust(diss=domains.dist,distance=NULL,
+                               min.nc = 2, max.nc = 10,
+                               method = "median",
+                               index="silhouette")
 
     gruposs <<- number_clusters
 
 
-    # visualiza los clusters , 2 por que fue resultado de numero de clusters
-    # usa la grafica del metodo Classical (Metric) Multidimensional Scaling (NDS)
-
-    domains.pam <- pam(domains.dist,2)
-    titulo <- paste("Gráfica MDS de respuestas de ",tipo)
-    respuestas.mds <- as.data.frame(cmdscale(domains.dist,2))
-    respuestas.mds$respuestas_cluster <- as.factor(domains.pam$clustering)
-    ggplot(respuestas.mds,aes(x=V1,y=V2,color=respuestas_cluster)) +
-      geom_point() + theme_ipsum() +
-      labs(title=titulo,
-           subtitle="Coloreado por grupo PAM") +
-      scale_color_brewer(palette="Set1")
-    
+     # visualiza los clusters , 2 por que fue resultado de numero de clusters
+     # usa la grafica del metodo Classical (Metric) Multidimensional Scaling (NDS)
+ 
+     domains.pam <- pam(domains.dist,2)
+     titulo <- paste("Gráfica MDS de respuestas de ",tipo)
+     respuestas.mds <- as.data.frame(cmdscale(domains.dist,2))
+     respuestas.mds$respuestas_cluster <- as.factor(domains.pam$clustering)
+     ggplot(respuestas.mds,aes(x=V1,y=V2,color=respuestas_cluster)) +
+       geom_point() + theme_ipsum() +
+       labs(title=titulo,
+            subtitle="Coloreado por grupo PAM") +
+       scale_color_brewer(palette="Set1")
+  
     # domains.pam$silinfo  # muestra los miembros de cada grupo
       
 }
