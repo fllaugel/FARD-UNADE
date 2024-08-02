@@ -1,0 +1,251 @@
+---
+title: "Untitled"
+author: "felipe llaugel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analisis encuesta Inteligencia Artificial en la Fuerza Aerea de la Republica Dominicana
+
+Encuesta realizada a alumnos y docentes de las escuelas de la FARD en Julio del 2024
+
+
+```{r lectura de archivos}
+
+# lee dataset de docentes con caracteres en espanol
+
+docentes <- read.csv("docentes.csv", sep = ",",header = T, dec = ".",
+                     comment.char = "", strip.white = TRUE,
+                     stringsAsFactors = TRUE, encoding="latin1")
+
+# lee dataset de alumnos con caracteres en espanol
+
+alumnos <- read.csv("alumnos.csv", sep = ",",header = T, dec = ".",
+                     comment.char = "", strip.white = TRUE,
+                     stringsAsFactors = TRUE, encoding="latin1")
+
+# descripcion de datos
+
+str(docentes)
+str(alumnos)
+
+
+respalumnos <- subset(alumnos, select= -c(AP0,AP10)) # seleccciona respuestas categoricas
+
+respdocentes <- subset(docentes, select= -c(DP1,DP3,DP12)) # seleccciona respuestas categoricas
+
+```
+
+## Estadisticas descriptivas mas relevantes
+
+
+```{r  descriptivas, include=TRUE, echo=T, results=T, fig=T}
+
+# Escuela EGCEMA          Instructores   8         Estudiantes    45
+# Escuela DIFOCAA         Instructores   14       Estudiantes    124
+# Escuela DIFODECAM  Instructores    25       Estudiantes    306
+# Academia Militar           Instructores   30        Estudiantes    172
+
+# grafica de barras para resumir los resultados de encuesta
+
+
+library(dplyr)
+library(tidyr)
+library(ggplot2) # para graficos
+library(scales)  # para calcular los porcentajes
+
+# respuestas de alumnos
+
+questions <- respalumnos
+
+questions <- questions %>% gather(key='Pregunta', value='Respuesta')
+
+questions_summary <- questions %>%
+ group_by(Pregunta, Respuesta) %>%
+ dplyr::summarize(freq = length(Pregunta)) %>%
+ ungroup %>% group_by(Pregunta) %>% 
+ mutate(proportion = freq / sum(freq))
+
+ggplot(questions, aes(x=Pregunta)) +
+  geom_bar(aes(fill=Respuesta), position="fill") +
+  geom_text(
+    data=questions_summary,
+    aes(y=freq, label=percent(proportion), group=Respuesta),
+    position=position_fill(vjust=0.5),
+    color='gray25', size=3.5
+  ) +
+  scale_fill_brewer(palette='Pastel1', direction=-1) +
+  scale_y_continuous(expand=expansion(0), labels=scales::percent_format()) +
+  labs(
+    title='Cuestionario de Alumnos', subtitle='',
+    x='Pregunta', y='% de la Respuesta'
+  ) +
+  theme_classic() +
+  theme(legend.position='top')
+
+# respuestas de docentes
+questions <- respdocentes
+
+questions <- questions %>% gather(key='Pregunta', value='Respuesta')
+
+questions_summary <- questions %>%
+ group_by(Pregunta, Respuesta) %>%
+ dplyr::summarize(freq = length(Pregunta)) %>%
+ ungroup %>% group_by(Pregunta) %>% 
+ mutate(proportion = freq / sum(freq))
+
+ggplot(questions, aes(x=Pregunta)) +
+  geom_bar(aes(fill=Respuesta), position="fill") +
+  geom_text(
+    data=questions_summary,
+    aes(y=freq, label=percent(proportion), group=Respuesta),
+    position=position_fill(vjust=0.5),
+    color='gray25', size=3.5
+  ) +
+  scale_fill_brewer(palette='Pastel2', direction=-1) +
+  scale_y_continuous(expand=expansion(0), labels=scales::percent_format()) +
+  labs(
+    title='Cuestionario de Docentes', subtitle='',
+    x='Pregunta', y='% de la Respuesta'
+  ) +
+  theme_classic() +
+  theme(legend.position='top')
+
+# tipos de IA usadas por los alumnos
+
+table(alumnos$AP10) # ¿Seleccione qué tipos de IA a utilizado durante su proceso de educación militar?
+table(docentes$DP3) # ¿Cuáles  desafíos considera usted que son los mas importantes en la  implementación y uso de la IA en la Educación militar de la FARD?
+
+
+```
+
+## Correlacion entre respuestas de docentes y alumnos
+
+## Analisis de conglomerados alumnos y docentes
+
+```{r  grupos, include=TRUE, echo=T, results=T, fig=T}
+
+
+# carga paquetes requeridos
+
+library(tidyverse)
+library(hrbrthemes)
+library(cluster)
+library(NbClust)
+library(factoextra)
+
+# funcion para analisis de conglomerados
+
+gruposs <- 0
+
+grupos <- function(datos, tipo){
+
+    domains.dist <- daisy(datos,metric="gower") # calcula matriz de falta de similitud
+    
+    # k-medoids clustering or partitioning around medoids (PAM)
+    # visualiza la matriz, Values of 1 are completely dissimilar and values of 0 means identical responses
+    
+    gradient.color <- list(low = "steelblue",  high = "white")
+    fviz_dist(domains.dist, 
+       gradient = gradient.color,order=F, show_labels = T,   lab_size = 4)
+    
+    # determina el numero de clusters usando el metodo de siluetas
+    number_clusters <- NbClust(diss=domains.dist,distance=NULL,
+                              min.nc = 2, max.nc = 10,
+                              method = "median",
+                              index="silhouette")
+
+    gruposs <<- number_clusters
+
+
+    # visualiza los clusters , 2 por que fue resultado de numero de clusters
+    # usa la grafica del metodo Classical (Metric) Multidimensional Scaling (NDS)
+
+    domains.pam <- pam(domains.dist,2)
+    titulo <- paste("Gráfica MDS de respuestas de ",tipo)
+    respuestas.mds <- as.data.frame(cmdscale(domains.dist,2))
+    respuestas.mds$respuestas_cluster <- as.factor(domains.pam$clustering)
+    ggplot(respuestas.mds,aes(x=V1,y=V2,color=respuestas_cluster)) +
+      geom_point() + theme_ipsum() +
+      labs(title=titulo,
+           subtitle="Coloreado por grupo PAM") +
+      scale_color_brewer(palette="Set1")
+    
+    # domains.pam$silinfo  # muestra los miembros de cada grupo
+      
+}
+
+
+grupos(respalumnos,"Alumnos")
+gruposs
+
+
+
+grupos(respdocentes,"Docentes")
+gruposs
+
+
+
+
+
+```
+
+
+
+
+## Nube de palabras para definicion de IA en docentes y alumnos
+
+```{r  nube, include=TRUE, echo=FALSE}
+
+library(wordcloud) # Paquete para crear wordcloud
+library(tm)        # paquete para crear corpus para wordcloud
+library(RColorBrewer)  # colores del word cloud
+
+library(dplyr)     # paqeuete para usar la %>% pipe function
+
+# une las respuestas de ambos datasets en un data frame
+
+
+resp1 <- data.frame(docentes$DP1,"D")  # Extre texto de respuesta de docentes
+colnames(resp1) <- c("texto","tipo")
+resp2 <- data.frame(alumnos$AP0,"A")   # Extrae texto de respueta de alumnos
+colnames(resp2) <- c("texto","tipo")
+
+
+resp <- rbind(resp1,resp2)             # une respuestas de ambos datasets
+
+nube <- function(texto, palabras){
+    docs <- Corpus(VectorSource(texto))  # crea corpus con texto
+
+    # limpia cracteres, numeros y otras palabras
+    docs <- docs %>%
+      tm_map(removeNumbers) %>%
+      tm_map(removePunctuation) %>%
+      tm_map(stripWhitespace)
+    docs <- tm_map(docs, content_transformer(tolower))
+    docs <- tm_map(docs, removeWords, stopwords("spanish"))
+    
+    # prepara texto para procesar nube de palabras
+    
+    dtm <- TermDocumentMatrix(docs) 
+    matrix <- as.matrix(dtm) 
+    words <- sort(rowSums(matrix),decreasing=TRUE) 
+    df <- data.frame(word = names(words),freq=words)
+    
+    set.seed(1234) # for reproducibility 
+         wordcloud(words = df$word, freq = df$freq, min.freq = 2,           max.words=palabras, random.order=FALSE, rot.per=0.35,            colors=brewer.pal(8, "Dark2"))
+}   
+
+nube(docentes$DP1 ,200) #  1. ¿Para usted que es la Inteligencia Artificial?
+
+nube(alumnos$AP0 ,200) # ¿Qué es para usted la Inteligencia Artificial?
+
+nube(docentes$DP12 ,200) # 12.  ¿Qué aspecto negativo considera usted que afecta en la implementación y uso de la IA artificial en la Educación militar de la FARD?
+
+
+```
+
