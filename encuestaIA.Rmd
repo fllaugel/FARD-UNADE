@@ -138,9 +138,13 @@ library(cluster)
 library(NbClust)
 library(factoextra)
 
+
+
 # funcion para analisis de conglomerados
 
 gruposs <- 0
+
+gruposnum <- NULL
 
 grupos <- function(datos, tipo){
 
@@ -176,25 +180,124 @@ grupos <- function(datos, tipo){
             subtitle="Coloreado por grupo PAM") +
        scale_color_brewer(palette="Set1")
   
-    # domains.pam$silinfo  # muestra los miembros de cada grupo
+    gruposnum <<- domains.pam$clustering  # muestra los miembros de cada grupo
       
 }
 
+# Calcula clusters para alumnos
 
 grupos(respalumnos,"Alumnos")
 gruposs
 
 
+df <- as.data.frame(gruposnum) # convierte a data frame
+
+GRUPO <- df$gruposnum
+
+respalumnos <- cbind(respalumnos,GRUPO) # agrega numero de cluster
+
+
+
+# Calcula clusters para docentes
 
 grupos(respdocentes,"Docentes")
 gruposs
 
+df <- as.data.frame(gruposnum) # convierte a data frame
 
+GRUPO <- df$gruposnum
 
+respdocentes <- cbind(respdocentes,GRUPO) # agrega numero de cluster
 
 
 ```
 
+
+## Grafica de grupos juntos
+
+
+
+```{r gruposjuntos, include=TRUE, echo=T, results=T, fig=T}
+
+
+barrasgrupo <- function(questions,cluster,alum_doc,colores){
+
+
+    titulo <- paste("Cuestionario de ",alum_doc,"grupo ",cluster)
+    
+    questions <- questions %>% gather(key='Pregunta', value='Respuesta')
+    
+    questions_summary <- questions %>%
+     group_by(Pregunta, Respuesta) %>%
+     dplyr::summarize(freq = length(Pregunta)) %>%
+     ungroup %>% group_by(Pregunta) %>% 
+     mutate(proportion = freq / sum(freq)) 
+      
+    
+    ggplot(questions, aes(x=Pregunta)) +
+      geom_bar(aes(fill=Respuesta), position="fill") +
+      geom_text(
+        data=questions_summary,
+        aes(y=freq, label=percent(proportion), group=Respuesta),
+        position=position_fill(vjust=0.5),
+        color='gray25', size=3.5
+      ) +
+      scale_fill_brewer(palette=colores, direction=-1) +
+      scale_y_continuous(expand=expansion(0), labels=scales::percent_format()) +
+      labs(
+        title=titulo, subtitle='',
+        x='Pregunta', y='% de la Respuesta'
+      ) +
+      theme_classic() +
+      theme(legend.position='right')+
+      coord_flip() 
+
+}
+
+
+###############  Grafica por grupos ###########
+
+table(respalumnos$GRUPO) # cuenta alumnos por grupo
+table(respdocentes$GRUPO) # cuenta docences por grupo
+
+questions <- respalumnos[respalumnos$GRUPO<2,] # Grafica frupo 1 de alumnos
+questions <- subset(questions, select=-GRUPO)
+
+alum_doc <- "Alumnos"
+colores <- "Accent"
+cluster <- 1
+
+barrasgrupo(questions,cluster,alum_doc,colores)
+
+questions <- respalumnos[respalumnos$GRUPO>1,] # Grafica grupo 2 de alumnos
+questions <- subset(questions, select=-GRUPO)
+
+alum_doc <- "Alumnos"
+colores <- "Accent"
+cluster <- 2
+
+barrasgrupo(questions,cluster,alum_doc,colores)
+
+
+questions <- respdocentes[respdocentes$GRUPO<2,] # Grafica grupo 1 de docentes
+questions <- subset(questions, select=-GRUPO)
+
+alum_doc <- "Docentes"
+colores <- "Set2"
+cluster <- 1
+
+barrasgrupo(questions,cluster,alum_doc,colores)
+
+questions <- respdocentes[respdocentes$GRUPO>1,] # Grafica grupo 2 de docentes
+questions <- subset(questions, select=-GRUPO)
+
+alum_doc <- "Docentes"
+colores <- "Set2"
+cluster <- 2
+
+barrasgrupo(questions,cluster,alum_doc,colores)
+
+```
 
 
 
