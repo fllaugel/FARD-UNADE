@@ -40,15 +40,74 @@ respdocentes <- subset(docentes, select= -c(DP1,DP3,DP12)) # seleccciona respues
 
 ```
 
+## Analisis de datos categoricos
+
+```{r categoricos, include=TRUE, echo=T, results=T, fig=T}
+
+
+## Tablas de contingencia para respuestas de alumnos
+
+attach(respalumnos)
+
+# 1.  ¿Usted considera que es importante la IA en la educación militar en la FARD?
+#  3. ¿Usted considera que tiene beneficios el uso de IA en la Educación Militar en la FARD?
+ 
+
+prop.table(xtabs ( ~ AP1 + AP3 , data = respalumnos ))*100 # construye tabla de contingencia
+addmargins(xtabs ( ~ AP1 + AP3 , data = respalumnos ))     # calcula suma de filas y columnas
+
+chisq.test(AP1,AP3, correct=F)
+
+#  2. ¿Usted ha utilizado herramientas de IA para apoyo en su proceso educativo en la FARD?
+#  9. ¿Considera usted que el uso de la IA es una forma segura para el proceso educativo militar de la FARD?
+
+
+
+prop.table(xtabs ( ~ AP2 + AP9 , data = respalumnos ))*100 # construye tabla de contingencia
+addmargins(xtabs ( ~ AP2 + AP9 , data = respalumnos ))     # calcula suma de filas y columnas
+
+chisq.test(AP2,AP9, correct=F)
+
+
+
+## Tablas de contingencia para respuestas de docentes
+
+attach(respdocentes)
+
+# 5. ¿Usted considera necesario recibir cursos de capacitación o formación para el uso de la IA en la Educación militar de la FARD?
+# 6. ¿Usted permite a los alumnos que hagan uso de la IA durante el proceso educativo militar en la FARD?
+
+prop.table(xtabs ( ~ DP5 + DP6 , data = respdocentes ))*100 # construye tabla de contingencia
+addmargins(xtabs ( ~ DP5 + DP6 , data = respalumnos ))     # calcula suma de filas y columnas
+
+chisq.test(DP5,DP6, correct=F)
+
+
+# 10. ¿Tiene conocimiento si existen expertos o técnicos en IA que contribuyen en mejorar el proceso de educación militar en la FARD? 
+# 11. ¿Considera usted que se ajustan las estrategias actuales de IA a los resultados que se desean alcanzar en la educación militar de la FARD?
+
+
+prop.table(xtabs ( ~ DP10 + DP11 , data = respdocentes ))*100 # construye tabla de contingencia
+addmargins(xtabs ( ~ DP10 + DP11 , data = respalumnos ))     # calcula suma de filas y columnas
+
+chisq.test(DP10,DP11, correct=F)
+
+
+
+
+
+
+```
+
+
+
+
+
 ## Estadisticas descriptivas mas relevantes
 
 
 ```{r  descriptivas, include=TRUE, echo=T, results=T, fig=T}
 
-# Escuela EGCEMA          Instructores   8         Estudiantes    45
-# Escuela DIFOCAA         Instructores   14       Estudiantes    124
-# Escuela DIFODECAM  Instructores    25       Estudiantes    306
-# Academia Militar           Instructores   30        Estudiantes    172
 
 # grafica de barras para resumir los resultados de encuesta
 
@@ -172,6 +231,8 @@ grupos <- function(datos, tipo){
  
      domains.pam <- pam(domains.dist,2)
      titulo <- paste("Gráfica MDS de respuestas de ",tipo)
+         gruposnum <<- domains.pam$clustering  # muestra los miembros de cada grupo
+
      respuestas.mds <- as.data.frame(cmdscale(domains.dist,2))
      respuestas.mds$respuestas_cluster <- as.factor(domains.pam$clustering)
      ggplot(respuestas.mds,aes(x=V1,y=V2,color=respuestas_cluster)) +
@@ -180,7 +241,6 @@ grupos <- function(datos, tipo){
             subtitle="Coloreado por grupo PAM") +
        scale_color_brewer(palette="Set1")
   
-    gruposnum <<- domains.pam$clustering  # muestra los miembros de cada grupo
       
 }
 
